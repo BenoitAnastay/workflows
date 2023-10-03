@@ -13,12 +13,12 @@ on:
         required: false
         type: string
       repository:
-        default: "repository"
+        default: "home-assistant-addons-repository"
         description: The name of the stable repository
         required: false
         type: string
       repository_edge:
-        default: "repository-edge"
+        default: "home-assistant-addons-repository-edge"
         description: The name of the edge repository
         required: false
         type: string
@@ -209,3 +209,27 @@ jobs:
             "ghcr.io/${{ env.OWNER_LC }}/${{ needs.information.outputs.slug }}/${{ matrix.architecture }}:${{ needs.information.outputs.environment }}"
           docker push \
             "ghcr.io/${{ env.OWNER_LC }}/${{ needs.information.outputs.slug }}/${{ matrix.architecture }}:${{ needs.information.outputs.version }}"
+
+  publish-stable:
+    name: 📢 Publish to stable repository
+    if: needs.information.outputs.environment == 'stable'
+    needs:
+      - information
+      - deploy
+    environment:
+      name: ${{ needs.information.outputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Dispatch repository updater update signal
+        uses: peter-evans/repository-dispatch@v2.1.2
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: ${{ github.repository_owner }}/${{ inputs.repository }}
+          event-type: update
+          client-payload: >
+            {
+              "addon": "${{ needs.information.outputs.slug }}",
+              "name": "${{ needs.information.outputs.name }}",
+              "repository": "${{ github.repository }}",
+              "version": "${{ github.event.release.tag_name }}"
+            }
